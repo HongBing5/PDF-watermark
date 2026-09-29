@@ -67,8 +67,8 @@ jobs:
           python-version: '3.11'
       - name: 安装依赖
         run: |
-          python -m pip install --upgrade pip
-          pip install pymupdf pillow pywebview pyinstaller pyobjc
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pymupdf pillow pywebview pyinstaller pyobjc
       - name: 生成图标 app.ico
         run: python3 watermark_app/build_icon.py
       - name: 打包 .app
