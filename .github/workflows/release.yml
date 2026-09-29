@@ -1,0 +1,88 @@
+# ============================================================
+#  PDF 批量加水印 · 发布版云端打包（Windows .exe + macOS .app）
+#  触发方式：
+#    1) 打 tag 并推送  →  自动发布到 GitHub Release
+#         git tag v1.0.1
+#         git push --tags
+#       云上会同时构建 Windows 的 .exe 和 macOS 的 .app，
+#       并作为资产上传到同名 Release。同事去 Release 下载即可，
+#       双击即用、不联网、无需安装。
+#    2) 在仓库 Actions 页手动 Run workflow  →  只生成 Artifacts 供你自测
+#        （不创建 Release，方便先验证再正式发版）
+#
+#  说明：未签名的 .exe / .app 首次打开会被系统拦截
+#        （Windows SmartScreen / macOS Gatekeeper），属正常现象，
+#        按提示「仍要运行 / 右键打开 / xattr -cr」即可。
+# ============================================================
+name: 发布新版本（打包 exe + app）
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-win:
+    name: 构建 Windows .exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller pymupdf pillow pywebview clr_loader
+      - name: 生成版本信息资源 + 图标
+        run: |
+          python watermark_app/build_version.py
+          python watermark_app/build_icon.py
+      - name: 打包 exe
+        run: |
+          cd watermark_app
+          python -m PyInstaller --noconfirm --onefile --noconsole --name "PDF批量加水印" --icon "app.ico" --version-file "version_info.txt" --add-data "ui.html;." --add-data "../pdf_watermark.py;." --collect-all webview --collect-all clr_loader --hidden-import PIL.ImageDraw --hidden-import PIL.ImageFont app_main.py
+      - name: 复制到根目录
+        run: Copy-Item "watermark_app\dist\PDF批量加水印.exe" "PDF批量加水印.exe" -Force
+      - name: 上传到 Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PDF批量加水印.exe
+      - name: 上传 Artifact（手动运行时）
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF批量加水印-Windows
+          path: PDF批量加水印.exe
+
+  build-mac:
+    name: 构建 macOS .app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install pymupdf pillow pywebview pyinstaller pyobjc
+      - name: 生成图标 app.ico
+        run: python3 watermark_app/build_icon.py
+      - name: 打包 .app
+        run: bash watermark_app/build_mac.sh
+      - name: 压缩成 zip
+        run: ditto -c -k --keepParent "watermark_app/dist/PDF批量加水印.app" "PDF批量加水印-macOS.zip"
+      - name: 上传到 Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PDF批量加水印-macOS.zip
+      - name: 上传 Artifact（手动运行时）
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF批量加水印-macOS
+          path: PDF批量加水印-macOS.zip

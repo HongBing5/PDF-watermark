@@ -1,0 +1,19 @@
+# ===== 项目本地数据（不入库） =====
+.workbuddy/
+
+# ===== 构建产物（由 release.yml 云端打包，不入库） =====
+PDF批量加水印.exe
+PDF批量加水印-macOS.zip
+watermark_app/build/
+watermark_app/dist/
+watermark_app/*.spec
+watermark_app/selftest.log
+selftest.log
+
+# ===== 打包过程生成的图标（由 build_icon.py 生成） =====
+watermark_app/app.ico
+watermark_app/app.icns
+watermark_app/_icon_preview.png
+
+# ===== 运行时用户数据（本地预设，不入库） =====
+presets.json
