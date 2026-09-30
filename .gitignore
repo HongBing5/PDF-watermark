@@ -13,6 +13,7 @@ selftest.log
 # ===== 打包过程生成的图标（由 build_icon.py 生成） =====
 watermark_app/app.ico
 watermark_app/app.icns
+watermark_app/version_info.txt
 watermark_app/_icon_preview.png
 
 # ===== 运行时用户数据（本地预设，不入库） =====

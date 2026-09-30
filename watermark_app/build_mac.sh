@@ -31,6 +31,7 @@ pyinstaller --noconfirm --windowed \
   --icon "app.icns" \
   --add-data "ui.html:." \
   --add-data "../pdf_watermark.py:." \
+  --add-data "fonts:fonts" \
   --hidden-import PIL.ImageDraw \
   --hidden-import PIL.ImageFont \
   --hidden-import webview.platforms.cocoa \

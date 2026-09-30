@@ -53,7 +53,7 @@ jobs:
         run: >
           python -m PyInstaller --noconfirm --onefile --noconsole
           --name "PDF批量加水印" --icon "app.ico" --version-file "version_info.txt"
-          --add-data "ui.html;." --add-data "../pdf_watermark.py;."
+          --add-data "ui.html;." --add-data "../pdf_watermark.py;." --add-data "fonts;."
           --collect-all webview --collect-all clr_loader
           --hidden-import PIL.ImageDraw --hidden-import PIL.ImageFont
           app_main.py

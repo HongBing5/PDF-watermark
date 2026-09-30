@@ -54,14 +54,54 @@ DEFAULT_GREY = 191      # 浅灰 (255*0.75)
 DEFAULT_GAP_X = 130
 DEFAULT_GAP_Y = 95
 DEFAULT_DPI = 150
-# 系统字体候选（按优先级）
-FONT_CANDIDATES = [
-    r"C:\Windows\Fonts\msyh.ttc",   # 微软雅黑（推荐，字符全）
-    r"C:\Windows\Fonts\simhei.ttf", # 黑体（不支持 ©）
-    r"C:\Windows\Fonts\simsun.ttc", # 宋体
-]
-DEFAULT_FONT_INDEX = 0  # .ttc 里的字体序号，0=Regular
+# .ttc 里的字体序号，0=Regular
+DEFAULT_FONT_INDEX = 0
 # ------------------------------------------
+
+
+def _bundled_font() -> "str | None":
+    """打包进 app 的字体（watermark_app/fonts/wm.ttc）。
+
+    无论 Windows 还是 macOS，优先用它 —— 保证两边水印字形完全一致，
+    且不依赖用户系统里装没装中文字体（Mac 上找不到 Windows 字体就会崩）。
+    """
+    bases = [os.path.dirname(os.path.abspath(__file__)),
+             getattr(sys, "_MEIPASS", "")]
+    for base in bases:
+        if not base:
+            continue
+        p = os.path.join(base, "fonts", "wm.ttc")
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def _platform_font_candidates() -> list:
+    """按优先级排列的可用中文字体（打包字体优先，其余为各系统兜底）。"""
+    cands = []
+    b = _bundled_font()
+    if b:
+        cands.append(b)
+    # macOS 系统字体（绝大多数 Mac 自带）
+    cands += [
+        "/System/Library/Fonts/PingFang.ttc",
+        "/System/Library/Fonts/STHeiti Light.ttc",
+        "/System/Library/Fonts/Supplemental/Hiragino Sans GB.ttc",
+        "/Library/Fonts/Arial Unicode.ttf",
+    ]
+    # Linux 常见中文字体
+    cands += [
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    ]
+    # Windows 系统字体
+    cands += [
+        r"C:\Windows\Fonts\msyh.ttc",   # 微软雅黑（推荐，字符全）
+        r"C:\Windows\Fonts\simhei.ttf", # 黑体（不支持 ©）
+        r"C:\Windows\Fonts\simsun.ttc", # 宋体
+    ]
+    return cands
 
 
 def pick_font(font_path: str = None) -> str:
@@ -70,7 +110,7 @@ def pick_font(font_path: str = None) -> str:
         if os.path.exists(font_path):
             return font_path
         raise FileNotFoundError(f"字体不存在: {font_path}")
-    for p in FONT_CANDIDATES:
+    for p in _platform_font_candidates():
         if os.path.exists(p):
             return p
     raise FileNotFoundError("未找到系统中文字体，请用 --font 指定字体文件路径")

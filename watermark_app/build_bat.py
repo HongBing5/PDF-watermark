@@ -34,6 +34,7 @@ echo [3/4] 打包中（约 1 分钟，请勿关闭窗口）...
   --version-file "version_info.txt" ^
   --add-data "ui.html;." ^
   --add-data "..\pdf_watermark.py;." ^
+  --add-data "fonts;fonts" ^
   --collect-all webview ^
   --collect-all clr_loader ^
   --hidden-import PIL.ImageDraw ^
