@@ -547,7 +547,7 @@ footer { display: flex; align-items: center; gap: 12px; }
 const $ = id => document.getElementById(id);
 
 /* ---------- 版本与更新检查（GitHub Releases，Windows / Mac 共用同一套） ---------- */
-const APP_VER = "1.0.0.0";                  // 当前版本号。改版本时：同步改 build_version.py 的 @VER@，并打 tag vX.X.X.X
+const APP_VER = "1.0";                      // 当前版本号（两段式 主.次）。改版本时：同步改 build_version.py 的 @VER@，并打 tag vX.X
 const UPDATE_REPO = "HongBing5/PDF-watermark";   // ← 你的 GitHub「用户名/仓库名」，更新提示才会生效
 function parseVer(v){ return (v || "").replace(/^v/, "").split(".").map(n => parseInt(n, 10) || 0); }
 function openExternal(url){

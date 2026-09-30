@@ -59,7 +59,7 @@ VSVersionInfo(
 FIELDS = {
     "@COMPANY@":   "©HB",
     "@DESC@":      "PDF 批量加水印 · 课件版权保护工具",
-    "@VER@":       "1.0.0.0",
+    "@VER@":       "1.0",
     "@VER_TUPLE@": "1, 0, 0, 0",
     "@COPY@":      "Copyright © 2026 HongBing. All rights reserved.",
     "@ORIG@":      "PDF批量加水印.exe",
