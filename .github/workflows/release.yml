@@ -1,18 +1,15 @@
 # ============================================================
 #  PDF 批量加水印 · 发布版云端打包（Windows .exe + macOS .app）
 #  触发方式：
-#    1) 打 tag 并推送  →  自动发布到 GitHub Release
+#    1) 打 tag 并推送  →  自动构建并发布到 GitHub Release
 #         git tag v1.0.1
 #         git push --tags
-#       云上会同时构建 Windows 的 .exe 和 macOS 的 .app，
-#       并作为资产上传到同名 Release。同事去 Release 下载即可，
-#       双击即用、不联网、无需安装。
-#    2) 在仓库 Actions 页手动 Run workflow  →  只生成 Artifacts 供你自测
-#        （不创建 Release，方便先验证再正式发版）
+#       同事去 Release 下载即可，双击即用、不联网、无需安装。
+#    2) 仓库 Actions 页手动 Run workflow  →  只出 Artifacts 供自测
 #
 #  说明：未签名的 .exe / .app 首次打开会被系统拦截
 #        （Windows SmartScreen / macOS Gatekeeper），属正常现象，
-#        按提示「仍要运行 / 右键打开 / xattr -cr」即可。
+#        按提示「仍要运行 / 右键打开」即可。
 # ============================================================
 name: 发布新版本（打包 exe + app）
 
@@ -22,7 +19,19 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# 关键：不加这行，上传 Release 会报
+# "Resource not accessible by integration"（默认令牌是只读的）
+permissions:
+  contents: write
+
+# 关键：GitHub 的 Windows 机器控制台是 cp1252，
+# 脚本里任何中文 print 都会 UnicodeEncodeError 直接让构建失败。
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+
 jobs:
+  # ---------------- Windows .exe ----------------
   build-win:
     name: 构建 Windows .exe
     runs-on: windows-latest
@@ -30,33 +39,34 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.13'
       - name: 安装依赖
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller pymupdf pillow pywebview clr_loader
+          pip install pymupdf pillow pywebview pythonnet clr_loader pyinstaller
       - name: 生成版本信息资源 + 图标
         run: |
           python watermark_app/build_version.py
           python watermark_app/build_icon.py
       - name: 打包 exe
-        run: |
-          cd watermark_app
-          python -m PyInstaller --noconfirm --onefile --noconsole --name "PDF批量加水印" --icon "app.ico" --version-file "version_info.txt" --add-data "ui.html;." --add-data "../pdf_watermark.py;." --collect-all webview --collect-all clr_loader --hidden-import PIL.ImageDraw --hidden-import PIL.ImageFont app_main.py
+        working-directory: watermark_app
+        run: >
+          python -m PyInstaller --noconfirm --onefile --noconsole
+          --name "PDF批量加水印" --icon "app.ico" --version-file "version_info.txt"
+          --add-data "ui.html;." --add-data "../pdf_watermark.py;."
+          --collect-all webview --collect-all clr_loader
+          --hidden-import PIL.ImageDraw --hidden-import PIL.ImageFont
+          app_main.py
       - name: 复制到根目录
         run: Copy-Item "watermark_app\dist\PDF批量加水印.exe" "PDF批量加水印.exe" -Force
-      - name: 上传到 Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: PDF批量加水印.exe
-      - name: 上传 Artifact（手动运行时）
-        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: PDF批量加水印-Windows
           path: PDF批量加水印.exe
 
+  # ---------------- macOS .app ----------------
   build-mac:
     name: 构建 macOS .app
     runs-on: macos-latest
@@ -64,25 +74,39 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.13'
       - name: 安装依赖
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install pymupdf pillow pywebview pyinstaller pyobjc
+          python3 -m pip install pymupdf pillow pywebview pyobjc pyinstaller
       - name: 生成图标 app.ico
         run: python3 watermark_app/build_icon.py
       - name: 打包 .app
         run: bash watermark_app/build_mac.sh
       - name: 压缩成 zip
         run: ditto -c -k --keepParent "watermark_app/dist/PDF批量加水印.app" "PDF批量加水印-macOS.zip"
-      - name: 上传到 Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: PDF批量加水印-macOS.zip
-      - name: 上传 Artifact（手动运行时）
-        if: github.event_name == 'workflow_dispatch'
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: PDF批量加水印-macOS
           path: PDF批量加水印-macOS.zip
+
+  # ---------------- 汇总发版 ----------------
+  # 两个平台都构建好后，由这一个 job 统一下载产物、创建 Release，
+  # 避免 win / mac 两个 job 同时建 Release 互相抢（422 Already exists）
+  release:
+    name: 发布 Release
+    needs: [build-win, build-mac]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载全部构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: release-files
+          merge-multiple: true
+      - name: 创建 Release 并上传
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/*
+          generate_release_notes: true

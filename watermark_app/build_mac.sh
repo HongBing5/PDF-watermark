@@ -17,8 +17,11 @@ PYBIN=$(command -v python3 || command -v python)
 echo "== 1/3 生成 macOS 图标 app.icns =="
 "$PYBIN" - <<'PY'
 from PIL import Image
-Image.open("app.ico").save("app.icns")
-print("app.icns 已生成")
+ico = Image.open("app.ico")
+ico.size = max(ico.info["sizes"])   # 显式取最大帧（256），避免拿到 16x16 放大成糊图
+ico.load()
+ico.convert("RGBA").save("app.icns")
+print("app.icns 已生成", ico.size)
 PY
 
 echo "== 2/3 PyInstaller 打包 .app =="

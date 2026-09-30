@@ -4,7 +4,16 @@
 换字/换色改下面常量后重跑即可。
 """
 import os
+import sys
 from PIL import Image, ImageDraw, ImageFont
+
+# GitHub Actions 的 Windows 机器控制台是 cp1252，中文 print 会直接
+# UnicodeEncodeError 中断构建。这里把 stdout 强制成 UTF-8（幂等、失败不影响）。
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.ico")
 
@@ -12,12 +21,21 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.ico")
 C_TOP = (216, 58, 43)
 C_BOT = (168, 24, 14)
 CHAR = "印"
-# 华文中宋（衬线、笔画方正，最接近印章刻字）；没有就退回 simsun / 微软雅黑
+# 华文中宋（衬线、笔画方正，最接近印章刻字）；没有就退回宋体 / 微软雅黑。
+# 后面的 macOS 路径是给 GitHub Actions 的云 Mac 用的（那边没有 C:\Windows\Fonts，
+# 不加就会退化成 load_default 的无中文字形，图标上的「印」字会变成空白）。
 FONT_CANDIDATES = [
+    # Windows
     r"C:\Windows\Fonts\STZHONGS.TTF",
     r"C:\Windows\Fonts\simsun.ttc",
     r"C:\Windows\Fonts\msyhbd.ttc",
     r"C:\Windows\Fonts\msyh.ttc",
+    r"C:\Windows\Fonts\simhei.ttf",
+    # macOS
+    "/System/Library/Fonts/Supplemental/Songti.ttc",
+    "/System/Library/Fonts/PingFang.ttc",
+    "/System/Library/Fonts/STHeiti Medium.ttc",
+    "/Library/Fonts/Arial Unicode.ttf",
 ]
 
 
@@ -28,6 +46,8 @@ def pick_font(size):
                 return ImageFont.truetype(p, size)
             except Exception:
                 continue
+    # 兜底（无中文字形，图标会缺字）：显式报警，别让它静静糊过去
+    print("WARN: no CJK font found, fallback to default font -> icon glyph may be blank")
     return ImageFont.load_default()
 
 
